@@ -15,13 +15,13 @@ import {
   EuiPageContentBody,
   EuiPageSideBar,
   EuiPanel,
-  EuiSpacer,
-  EuiText,
+  EuiSpacer
 } from '@elastic/eui';
 import { IHttpResponse } from 'angular';
 import _ from 'lodash';
 import React from 'react';
-import { ChromeBreadcrumb, CoreStart } from '../../../../../src/core/public';
+import { ChromeBreadcrumb, CoreStart, MountPoint, NotificationsStart, SavedObjectsStart } from '../../../../../src/core/public';
+import { DataSourceManagementPluginSetup, DataSourceSelectableConfig } from '../../../../../src/plugins/data_source_management/public';
 import {
   ASYNC_QUERY_ENDPOINT,
   ASYNC_QUERY_JOB_ENDPOINT,
@@ -39,6 +39,7 @@ import {
   getSelectedResults,
 } from '../../utils/utils';
 import { PPLPage } from '../PPLPage/PPLPage';
+import ClusterTabs from '../QueryLanguageSwitch/ClusterTabs';
 import Switch from '../QueryLanguageSwitch/Switch';
 import QueryResults from '../QueryResults/QueryResults';
 import { CreateButton } from '../SQLPage/CreateButton';
@@ -97,6 +98,11 @@ interface MainProps {
   setBreadcrumbs: (newBreadcrumbs: ChromeBreadcrumb[]) => void;
   isAccelerationFlyoutOpen: boolean;
   urlDataSource: string;
+  savedObjects: SavedObjectsStart;
+  notifications: NotificationsStart;
+  dataSourceEnabled: boolean;
+  dataSourceManagement: DataSourceManagementPluginSetup;
+  setActionMenu: (menuMount: MountPoint | undefined) => void;
 }
 
 interface MainState {
@@ -124,6 +130,8 @@ interface MainState {
   refreshTree: boolean;
   isAccelerationFlyoutOpened: boolean;
   isCallOutVisible: boolean;
+  selectedDataConnectionId: string;
+  cluster: string;
 }
 
 const SUCCESS_MESSAGE = 'Success';
@@ -265,6 +273,7 @@ export class Main extends React.Component<MainProps, MainState> {
       refreshTree: false,
       isAccelerationFlyoutOpened: false,
       isCallOutVisible: false,
+      cluster: 'Indexes'
     };
     this.httpClient = this.props.httpClient;
     this.updateSQLQueries = _.debounce(this.updateSQLQueries, 250).bind(this);
@@ -386,10 +395,14 @@ export class Main extends React.Component<MainProps, MainState> {
     const language = this.state.language;
     if (queries.length > 0) {
       const endpoint = '/api/sql_console/' + (_.isEqual(language, 'SQL') ? 'sqlquery' : 'pplquery');
+      let query = {};
+      if (this.props.dataSourceEnabled) {
+        query = {dataSourceId: this.state.selectedDataConnectionId};
+      }
       const responsePromise = Promise.all(
-        queries.map((query: string) =>
+        queries.map((payload: string) =>
           this.httpClient
-            .post(endpoint, { body: JSON.stringify({ query }) })
+          .post(endpoint, { body: JSON.stringify({ query: payload }), query })
             .catch((error: any) => {
               this.setState({
                 messages: [
@@ -451,6 +464,9 @@ export class Main extends React.Component<MainProps, MainState> {
                 datasource: currentDataSource,
                 sessionId: getAsyncSessionId(currentDataSource) ?? undefined,
               }),
+              query: {
+                dataSourceId: this.state.selectedDataConnectionId
+              },
             })
             .catch((error: any) => {
               this.setState({
@@ -517,7 +533,9 @@ export class Main extends React.Component<MainProps, MainState> {
 
   callGetStartPolling = async (queries: string[]) => {
     const nextP = this.httpClient
-      .get(ASYNC_QUERY_JOB_ENDPOINT + this.state.asyncJobId)
+    .get(ASYNC_QUERY_JOB_ENDPOINT + this.state.asyncJobId, {query: {
+      dataSourceId: this.state.selectedDataConnectionId
+    }},)
       .catch((error: any) => {
         this.setState({
           messages: [
@@ -649,7 +667,9 @@ export class Main extends React.Component<MainProps, MainState> {
       Promise.all(
         queries.map((query: string) =>
           this.httpClient
-            .post('/api/sql_console/sqljson', { body: JSON.stringify({ query }) })
+          .post('/api/sql_console/sqljson', { body: JSON.stringify({ query }), query: {
+            dataSourceId: this.state.selectedDataConnectionId
+          }})
             .catch((error: any) => {
               this.setState({
                 messages: [
@@ -683,7 +703,9 @@ export class Main extends React.Component<MainProps, MainState> {
       Promise.all(
         queries.map((query: string) =>
           this.httpClient
-            .post(endpoint, { body: JSON.stringify({ query }) })
+          .post(endpoint, { body: JSON.stringify({ query }), query: {
+            dataSourceId: this.state.selectedDataConnectionId
+          }, })
             .catch((error: any) => {
               this.setState({
                 messages: [
@@ -717,7 +739,9 @@ export class Main extends React.Component<MainProps, MainState> {
       Promise.all(
         queries.map((query: string) =>
           this.httpClient
-            .post(endpoint, { body: JSON.stringify({ query }) })
+          .post(endpoint, { body: JSON.stringify({ query }), query: {
+            dataSourceId: this.state.selectedDataConnectionId
+          }, })
             .catch((error: any) => {
               this.setState({
                 messages: [
@@ -751,7 +775,9 @@ export class Main extends React.Component<MainProps, MainState> {
       Promise.all(
         queries.map((query: string) =>
           this.httpClient
-            .post(endpoint, { body: JSON.stringify({ query }) })
+          .post(endpoint, { body: JSON.stringify({ query }), query: {
+            dataSourceId: this.state.selectedDataConnectionId
+          }, })
             .catch((error: any) => {
               this.setState({
                 messages: [
@@ -806,7 +832,16 @@ export class Main extends React.Component<MainProps, MainState> {
       () => console.log('Successfully updated language to ', this.state.language)
     ); // added callback function to handle async issues
   };
-
+  onChangeCluster = (id: string) => {
+    this.setState(
+      {
+        cluster: id,
+        queryResultsTable: [],
+      },
+      () => console.log('Successfully updated cluster to ', this.state.cluster)
+    ); // added callback function to handle async issues
+  };
+  
   updateSQLQueries = (query: string) => {
     this.setState({
       sqlQueriesString: query,
@@ -849,6 +884,16 @@ export class Main extends React.Component<MainProps, MainState> {
     });
   };
 
+  onSelectedDataSource = (e) => {
+    const dataConnectionId = e[0] ? e[0].id : undefined;
+    this.setState({ selectedDataConnectionId: dataConnectionId });
+  }
+
+  // DataSourceSelector = this.props.dataSourceManagement?.ui?.DataSourceSelector;
+
+  DataSourceMenu = this.props.dataSourceManagement?.ui?.getDataSourceMenu<DataSourceSelectableConfig>();
+  DataSourceSelector = this.props.dataSourceManagement.ui.DataSourceSelector;
+
   render() {
     let page;
     let link;
@@ -874,6 +919,7 @@ export class Main extends React.Component<MainProps, MainState> {
             this.props.isAccelerationFlyoutOpen && !this.state.isAccelerationFlyoutOpened
           }
           setIsAccelerationFlyoutOpened={this.setIsAccelerationFlyoutOpened}
+          dataSourceId={this.state.selectedDataConnectionId}
         />
       );
       link = 'https://opensearch.org/docs/latest/search-plugins/sql/sql/index/';
@@ -945,16 +991,30 @@ export class Main extends React.Component<MainProps, MainState> {
 
     return (
       <>
+        <this.DataSourceMenu
+          setMenuMountPoint={this.props.setActionMenu}
+          componentType={'DataSourceMultiSelectable'}
+          componentConfig={{
+              savedObjects:this.props.savedObjects.client,
+              notifications:this.props.notifications,
+              hideLocalCluster: true,
+              fullWidth: true,
+              // dataSourceFilter: dataSourceFilter,
+              activeOption: [{label: 'data sources', id: '1'}],
+              onSelectedDataSources: this.onSelectedDataSource
+          }}
+        />
         <EuiFlexGroup direction="row" alignItems="center">
           <EuiFlexItem>
-            <EuiText>Data Sources</EuiText>
-            <DataSelect
-              http={this.httpClient}
-              onSelect={this.handleDataSelect}
-              urlDataSource={this.props.urlDataSource}
-              asyncLoading={this.state.asyncLoading}
+            <this.DataSourceSelector
+              savedObjectsClient={this.props.savedObjects.client}
+              notifications={this.props.notifications}
+              onSelectedDataSource={this.onSelectedDataSource}
+              disabled={false}
+              fullWidth={false}
+              // filterFunc={(ds) => ds.attributes.auth.type !== 'no_auth'}
             />
-            <EuiSpacer />
+            <EuiSpacer/>
           </EuiFlexItem>
           <EuiFlexItem grow={false}>
             <Switch
@@ -968,6 +1028,7 @@ export class Main extends React.Component<MainProps, MainState> {
               {linkTitle}
             </EuiButton>
           </EuiFlexItem>
+          <EuiSpacer/>
         </EuiFlexGroup>
         <EuiPage paddingSize="none">
           {this.state.language === 'SQL' && (
@@ -980,6 +1041,13 @@ export class Main extends React.Component<MainProps, MainState> {
                 }}
               >
                 <EuiFlexGroup direction="row" gutterSize="s">
+                  <EuiFlexItem grow={false}>
+                    <ClusterTabs
+                      onChange={this.onChangeCluster}
+                      cluster={this.state.cluster}
+                      asyncLoading={this.state.asyncLoading}
+                    />
+                  </EuiFlexItem>
                   <EuiFlexItem grow={false}>
                     <EuiButtonIcon
                       display="base"
@@ -1005,12 +1073,26 @@ export class Main extends React.Component<MainProps, MainState> {
                     height: 'calc(100vh - 308px)',
                   }}
                 >
+                  {this.state.cluster === 'Data Connections' && (
+                    <EuiFlexItem grow={false}>
+                      {/* <EuiText>Data Sources</EuiText> */}
+                        <DataSelect
+                          http={this.httpClient}
+                          onSelect={this.handleDataSelect}
+                          urlDataSource={this.props.urlDataSource}
+                          asyncLoading={this.state.asyncLoading}
+                          dataSourceId={this.state.selectedDataConnectionId}
+                        />
+                    </EuiFlexItem>
+                  )}
                   <EuiFlexItem grow={false}>
                     <TableView
                       http={this.httpClient}
                       selectedItems={this.state.selectedDatasource}
                       updateSQLQueries={this.updateSQLQueries}
                       refreshTree={this.state.refreshTree}
+                      selectedDataSourceId={this.state.selectedDataConnectionId}
+                      dataSourceEnabled={this.props.dsqtsqSourceEnabled}
                     />
                     <EuiSpacer />
                   </EuiFlexItem>

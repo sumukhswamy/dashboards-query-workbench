@@ -31,12 +31,14 @@ interface IndexSettingOptionsProps {
   http: CoreStart['http'];
   accelerationFormData: CreateAccelerationForm;
   setAccelerationFormData: React.Dispatch<React.SetStateAction<CreateAccelerationForm>>;
+  dataSourceId: string
 }
 
 export const IndexSettingOptions = ({
   http,
   accelerationFormData,
   setAccelerationFormData,
+  dataSourceId,
 }: IndexSettingOptionsProps) => {
   const autoRefreshId = 'refresh-option-1';
   const intervalRefreshId = 'refresh-option-2';
@@ -153,6 +155,7 @@ export const IndexSettingOptions = ({
         http={http}
         accelerationFormData={accelerationFormData}
         setAccelerationFormData={setAccelerationFormData}
+        dataSourceId={dataSourceId}
       />
       <EuiFormRow
         label="Number of primary shards"

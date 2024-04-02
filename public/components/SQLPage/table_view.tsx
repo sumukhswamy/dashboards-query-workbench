@@ -42,9 +42,11 @@ interface CustomView {
   selectedItems: EuiComboBoxOptionOption[];
   updateSQLQueries: (query: string) => void;
   refreshTree: boolean;
+  selectedDataSourceId: string;
+  dataSourceEnabled: boolean;
 }
 
-export const TableView = ({ http, selectedItems, updateSQLQueries, refreshTree }: CustomView) => {
+export const TableView = ({ http, selectedItems, updateSQLQueries, refreshTree, selectedDataSourceId, dataSourceEnabled }: CustomView) => {
   const [tableNames, setTableNames] = useState<string[]>([]);
   const [_selectedDatabase, setSelectedDatabase] = useState<string>('');
   const [_selectedTable, setSelectedTable] = useState<string | null>(null);
@@ -107,9 +109,15 @@ export const TableView = ({ http, selectedItems, updateSQLQueries, refreshTree }
         status: 'Query is run',
       });
       const query = { query: LOAD_OPENSEARCH_INDICES_QUERY };
+      let reqQuery = {};
+
+      if (dataSourceEnabled) {
+        reqQuery = {dataSourceId: selectedDataSourceId};
+      }
       http
         .post(FETCH_OPENSEARCH_INDICES_PATH, {
           body: JSON.stringify(query),
+          query: reqQuery,
         })
         .then((res) => {
           const responseObj = JSON.parse(res.data.resp);
@@ -142,7 +150,7 @@ export const TableView = ({ http, selectedItems, updateSQLQueries, refreshTree }
         query: `SHOW SCHEMAS IN \`${selectedItems[0]['label']}\``,
         datasource: selectedItems[0].label,
       };
-      getJobId(selectedItems[0].label, query, http, (id) => {
+      getJobId(selectedItems[0].label, query, http, selectedDataSourceId, (id) => {
         if (id === undefined) {
           const errorMessage = 'ERROR fetching databases';
           setIsLoading({
@@ -151,7 +159,7 @@ export const TableView = ({ http, selectedItems, updateSQLQueries, refreshTree }
           });
           setToast(errorMessage, 'danger');
         } else {
-          pollQueryStatus(id, http, (data) => {
+          pollQueryStatus(id, http, selectedDataSourceId, (data) => {
             setIsLoading({ flag: true, status: data.status });
             if (data.status === 'SUCCESS') {
               const fetchedDatanases = [].concat(...data.results);
@@ -205,7 +213,7 @@ export const TableView = ({ http, selectedItems, updateSQLQueries, refreshTree }
       query: `SHOW TABLES IN \`${selectedItems[0]['label']}\`.\`${databaseName}\``,
       datasource: selectedItems[0].label,
     };
-    getJobId(selectedItems[0].label, query, http, (id) => {
+    getJobId(selectedItems[0].label, query, http, selectedDataSourceId, (id) => {
       if (id === undefined) {
         const errorMessage = 'ERROR fetching Tables';
         setIsLoading({
@@ -215,7 +223,7 @@ export const TableView = ({ http, selectedItems, updateSQLQueries, refreshTree }
         setTreeDataDatabaseError(databaseName);
         setToast(errorMessage, 'danger');
       } else {
-        pollQueryStatus(id, http, (data) => {
+        pollQueryStatus(id, http, selectedDataSourceId, (data) => {
           if (data.status === 'SUCCESS') {
             const fetchTables = data.results.map((subArray) => subArray[1]);
             let values = loadTreeItem(fetchTables, TREE_ITEM_TABLE_NAME_DEFAULT_NAME);
@@ -273,7 +281,7 @@ export const TableView = ({ http, selectedItems, updateSQLQueries, refreshTree }
       query: `SHOW INDEX ON \`${selectedItems[0]['label']}\`.\`${databaseName}\`.\`${tableName}\``,
       datasource: selectedItems[0].label,
     };
-    getJobId(selectedItems[0].label, coverQuery, http, (id) => {
+    getJobId(selectedItems[0].label, coverQuery, http, selectedDataSourceId, (id) => {
       if (id === undefined) {
         const errorMessage = 'ERROR fetching Covering Index';
         setIsLoading({
@@ -283,7 +291,7 @@ export const TableView = ({ http, selectedItems, updateSQLQueries, refreshTree }
         setTreeDataTableError(databaseName, tableName);
         setToast(errorMessage, 'danger');
       }
-      pollQueryStatus(id, http, (data) => {
+      pollQueryStatus(id, http,selectedDataSourceId, (data) => {
         if (data.status === 'SUCCESS') {
           const res = [].concat(data.results);
           const coverIndexObj = loadTreeItem(res, TREE_ITEM_COVERING_INDEX_DEFAULT_NAME);
@@ -357,7 +365,7 @@ export const TableView = ({ http, selectedItems, updateSQLQueries, refreshTree }
       query: `SHOW MATERIALIZED VIEW IN \`${selectedItems[0]['label']}\`.\`${databaseName}\``,
       datasource: selectedItems[0].label,
     };
-    getJobId(selectedItems[0].label, materializedViewQuery, http, (id) => {
+    getJobId(selectedItems[0].label, materializedViewQuery, http, selectedDataSourceId, (id) => {
       if (id === undefined) {
         const errorMessage = 'ERROR fetching Materialized View';
         setIsLoading({
@@ -367,7 +375,7 @@ export const TableView = ({ http, selectedItems, updateSQLQueries, refreshTree }
         setTreeDataTableError(tableName, databaseName);
         setToast(errorMessage, 'danger');
       } else {
-        pollQueryStatus(id, http, (data) => {
+        pollQueryStatus(id, http, selectedDataSourceId, (data) => {
           if (data.status === 'SUCCESS') {
             const fetchMaterialzedView = data.results;
             let values = loadTreeItem(
@@ -421,7 +429,7 @@ export const TableView = ({ http, selectedItems, updateSQLQueries, refreshTree }
       query: `DESC SKIPPING INDEX ON \`${selectedItems[0]['label']}\`.\`${databaseName}\`.\`${tableName}\``,
       datasource: selectedItems[0].label,
     };
-    getJobId(selectedItems[0].label, skipQuery, http, (id) => {
+    getJobId(selectedItems[0].label, skipQuery, http, selectedDataSourceId, (id) => {
       if (id === undefined) {
         const errorMessage = 'ERROR fetching Skipping index';
         setIsLoading({
@@ -431,7 +439,7 @@ export const TableView = ({ http, selectedItems, updateSQLQueries, refreshTree }
         setTreeDataTableError(databaseName, tableName);
         setToast(errorMessage, 'danger');
       } else {
-        pollQueryStatus(id, http, (data) => {
+        pollQueryStatus(id, http, selectedDataSourceId, (data) => {
           if (data.status === 'SUCCESS') {
             if (data.results.length > 0) {
               setTreeData((prevTreeData) => {

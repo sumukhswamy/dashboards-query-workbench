@@ -17,6 +17,7 @@ interface AccelerationDataSourceSelectorProps {
   accelerationFormData: CreateAccelerationForm;
   setAccelerationFormData: React.Dispatch<React.SetStateAction<CreateAccelerationForm>>;
   selectedDatasource: EuiComboBoxOptionOption[];
+  dataSourceId: string;
 }
 
 export const AccelerationDataSourceSelector = ({
@@ -24,6 +25,7 @@ export const AccelerationDataSourceSelector = ({
   accelerationFormData,
   setAccelerationFormData,
   selectedDatasource,
+  dataSourceId
 }: AccelerationDataSourceSelectorProps) => {
   const { setToast } = useToast();
   const [dataConnections, setDataConnections] = useState<Array<EuiComboBoxOptionOption<string>>>(
@@ -71,11 +73,11 @@ export const AccelerationDataSourceSelector = ({
       datasource: accelerationFormData.dataSource,
     };
     const errorMessage = `ERROR: failed to load databases`;
-    getJobId(selectedDataConnection[0].label, query, http, (id: string) => {
+    getJobId(selectedDataConnection[0].label, query, http, dataSourceId, (id: string) => {
       if (id === undefined) {
         setToast(errorMessage, 'danger');
       } else {
-        pollQueryStatus(id, http, (data: { status: string; results: any[] }) => {
+        pollQueryStatus(id, http, dataSourceId, (data: { status: string; results: any[] }) => {
           if (data.status === 'SUCCESS') {
             let databaseOptions: Array<EuiComboBoxOptionOption<string>> = [];
             if (data.results.length > 0)
@@ -100,11 +102,11 @@ export const AccelerationDataSourceSelector = ({
       datasource: accelerationFormData.dataSource,
     };
     const errorMessage = `ERROR: failed to load tables`;
-    getJobId(selectedDataConnection[0].label, query, http, (id: string) => {
+    getJobId(selectedDataConnection[0].label, query, http, dataSourceId, (id: string) => {
       if (id === undefined) {
         setToast(errorMessage, 'danger');
       } else {
-        pollQueryStatus(id, http, (data: { status: string; results: any[] }) => {
+        pollQueryStatus(id, http, dataSourceId, (data: { status: string; results: any[] }) => {
           if (data.status === 'SUCCESS') {
             let dataTableOptions: Array<EuiComboBoxOptionOption<string>> = [];
             if (data.results.length > 0)

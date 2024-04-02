@@ -4,12 +4,23 @@
  */
 
 import { AppMountParameters, CoreSetup, CoreStart, Plugin } from '../../../src/core/public';
+import { DataSourcePluginSetup, DataSourcePluginStart } from '../../../src/plugins/data_source/public';
+import { DataSourceManagementPluginSetup } from '../../../src/plugins/data_source_management/public';
 import { PLUGIN_NAME } from '../common/constants';
 import { coreRefs } from './framework/core_refs';
 import { AppPluginStartDependencies, WorkbenchPluginSetup, WorkbenchPluginStart } from './types';
 
+export interface WorkbenchPluginSetupDependencies {
+  dataSource: DataSourcePluginSetup;
+  dataSourceManagement: DataSourceManagementPluginSetup
+}
+
+export interface WorkbenchPluginStartDependencies {
+  dataSource: DataSourcePluginStart;
+}
+
 export class WorkbenchPlugin implements Plugin<WorkbenchPluginSetup, WorkbenchPluginStart> {
-  public setup(core: CoreSetup): WorkbenchPluginSetup {
+  public setup(core: CoreSetup, {dataSource, dataSourceManagement} : WorkbenchPluginSetupDependencies): WorkbenchPluginSetup {
     // Register an application into the side navigation menu
     core.application.register({
       id: 'opensearch-query-workbench',
@@ -26,7 +37,7 @@ export class WorkbenchPlugin implements Plugin<WorkbenchPluginSetup, WorkbenchPl
         // Get start services as specified in opensearch_dashboards.json
         const [coreStart, depsStart] = await core.getStartServices();
         // Render the application
-        return renderApp(coreStart, depsStart as AppPluginStartDependencies, params);
+        return renderApp(coreStart, depsStart as AppPluginStartDependencies, params, dataSourceManagement);
       },
     });
 
@@ -34,13 +45,14 @@ export class WorkbenchPlugin implements Plugin<WorkbenchPluginSetup, WorkbenchPl
     return {};
   }
 
-  public start(core: CoreStart): WorkbenchPluginStart {
+  public start(core: CoreStart, {dataSource}: WorkbenchPluginStartDependencies): WorkbenchPluginStart {
 
     coreRefs.http = core.http;
     coreRefs.savedObjectsClient = core.savedObjects.client;
     coreRefs.toasts = core.notifications.toasts;
     coreRefs.chrome = core.chrome;
     coreRefs.application = core.application;
+    coreRefs.dataSource = dataSource;
     
     return {};
   }

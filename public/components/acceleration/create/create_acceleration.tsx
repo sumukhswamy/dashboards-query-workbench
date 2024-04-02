@@ -36,6 +36,7 @@ export interface CreateAccelerationProps {
   selectedDatasource: EuiComboBoxOptionOption[];
   resetFlyout: () => void;
   updateQueries: (query: string) => void;
+  dataSourceId: string;
 }
 
 export const CreateAcceleration = ({
@@ -43,6 +44,7 @@ export const CreateAcceleration = ({
   selectedDatasource,
   resetFlyout,
   updateQueries,
+  dataSourceId
 }: CreateAccelerationProps) => {
   const [accelerationFormData, setAccelerationFormData] = useState<CreateAccelerationForm>({
     dataSource: selectedDatasource.length > 0 ? selectedDatasource[0].label : '',
@@ -118,12 +120,14 @@ export const CreateAcceleration = ({
               accelerationFormData={accelerationFormData}
               setAccelerationFormData={setAccelerationFormData}
               selectedDatasource={selectedDatasource}
+              dataSourceId={dataSourceId}
             />
             <EuiSpacer size="xxl" />
             <IndexSettingOptions
               http={http}
               accelerationFormData={accelerationFormData}
               setAccelerationFormData={setAccelerationFormData}
+              dataSourceId={dataSourceId}
             />
             <EuiSpacer size="xxl" />
             <DefineIndexOptions

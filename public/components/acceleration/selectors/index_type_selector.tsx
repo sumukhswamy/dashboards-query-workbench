@@ -30,12 +30,14 @@ interface IndexTypeSelectorProps {
   http: CoreStart['http'];
   accelerationFormData: CreateAccelerationForm;
   setAccelerationFormData: React.Dispatch<React.SetStateAction<CreateAccelerationForm>>;
+  dataSourceId: string;
 }
 
 export const IndexTypeSelector = ({
   http,
   accelerationFormData,
   setAccelerationFormData,
+  dataSourceId,
 }: IndexTypeSelectorProps) => {
   const { setToast } = useToast();
   const [selectedIndexType, setSelectedIndexType] = useState<
@@ -53,11 +55,11 @@ export const IndexTypeSelector = ({
         datasource: accelerationFormData.dataSource,
       };
       const errorMessage = 'ERROR: failed to load table columns';
-      getJobId(accelerationFormData.dataSource, query, http, (id: string) => {
+      getJobId(accelerationFormData.dataSource, query, http, dataSourceId, (id: string) => {
         if (id === undefined) {
           setToast(errorMessage, 'danger');
         } else {
-          pollQueryStatus(id, http, (data: { status: string; results: any[] }) => {
+          pollQueryStatus(id, http, dataSourceId, (data: { status: string; results: any[] }) => {
             if (data.status === 'SUCCESS') {
               const dataTableFields: DataTableFieldsType[] = data.results
                 .filter((row) => !row[0].startsWith('#'))

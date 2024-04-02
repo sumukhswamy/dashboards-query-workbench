@@ -39,6 +39,7 @@ interface SQLPageProps {
   asyncLoading: boolean;
   openAccelerationFlyout: boolean;
   setIsAccelerationFlyoutOpened: (value: boolean) => void;
+  dataSourceId: string;
 }
 
 interface SQLPageState {
@@ -77,6 +78,7 @@ export class SQLPage extends React.Component<SQLPageProps, SQLPageState> {
           selectedDatasource={this.props.selectedDatasource}
           resetFlyout={this.resetFlyout}
           updateQueries={this.props.updateSQLQueries}
+          dataSourceId={this.props.dataSourceId}
         />
       ),
     });

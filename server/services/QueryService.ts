@@ -38,6 +38,7 @@ export default class QueryService {
         client = context.dataSource.opensearch.legacy.getClient(dataSourceId);
         queryResponse = await client.callAPI(format, params);
       } else {
+        console.log('heree')
         queryResponse = await this.client.asScoped(request).callAsCurrentUser(format, params);
       }
       return {

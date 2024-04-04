@@ -22,6 +22,7 @@ import _ from 'lodash';
 import React from 'react';
 import { ChromeBreadcrumb, CoreStart, MountPoint, NotificationsStart, SavedObjectsStart } from '../../../../../src/core/public';
 import { DataSourceManagementPluginSetup, DataSourceSelectableConfig } from '../../../../../src/plugins/data_source_management/public';
+import { DataSourceOption } from '../../../../../src/plugins/data_source_management/public/components/data_source_selector/data_source_selector';
 import {
   ASYNC_QUERY_ENDPOINT,
   ASYNC_QUERY_JOB_ENDPOINT,
@@ -132,6 +133,7 @@ interface MainState {
   isCallOutVisible: boolean;
   selectedDataConnectionId: string;
   cluster: string;
+  dataSourceOptions: DataSourceOption[]
 }
 
 const SUCCESS_MESSAGE = 'Success';
@@ -273,7 +275,9 @@ export class Main extends React.Component<MainProps, MainState> {
       refreshTree: false,
       isAccelerationFlyoutOpened: false,
       isCallOutVisible: false,
-      cluster: 'Indexes'
+      cluster: 'Indexes',
+      dataSourceOptions: [],
+      selectedDataConnectionId: ''
     };
     this.httpClient = this.props.httpClient;
     this.updateSQLQueries = _.debounce(this.updateSQLQueries, 250).bind(this);
@@ -889,10 +893,18 @@ export class Main extends React.Component<MainProps, MainState> {
     this.setState({ selectedDataConnectionId: dataConnectionId });
   }
 
+  selectedDatasourcesGroup = (e) => {
+    this.setState({dataSourceOptions: []})
+    const selectedOptions = e.filter(item => item.checked === "on");
+    if (selectedOptions.length >= 1) {
+      this.setState({dataSourceOptions:selectedOptions})
+    };
+  }
+
   // DataSourceSelector = this.props.dataSourceManagement?.ui?.DataSourceSelector;
 
   DataSourceMenu = this.props.dataSourceManagement?.ui?.getDataSourceMenu<DataSourceSelectableConfig>();
-  DataSourceSelector = this.props.dataSourceManagement.ui.DataSourceSelector;
+  DataSourceSelector = this.props.dataSourceManagement?.ui?.DataSourceSelector;
 
   render() {
     let page;
@@ -999,9 +1011,8 @@ export class Main extends React.Component<MainProps, MainState> {
               notifications:this.props.notifications,
               hideLocalCluster: true,
               fullWidth: true,
-              // dataSourceFilter: dataSourceFilter,
               activeOption: [{label: 'data sources', id: '1'}],
-              onSelectedDataSources: this.onSelectedDataSource
+              onSelectedDataSources: this.selectedDatasourcesGroup
           }}
         />
         <EuiFlexGroup direction="row" alignItems="center">
@@ -1012,7 +1023,7 @@ export class Main extends React.Component<MainProps, MainState> {
               onSelectedDataSource={this.onSelectedDataSource}
               disabled={false}
               fullWidth={false}
-              // filterFunc={(ds) => ds.attributes.auth.type !== 'no_auth'}
+              dataSourceFilter={(dataSource) => this.state.dataSourceOptions.some(item => item.id === dataSource.id)}
             />
             <EuiSpacer/>
           </EuiFlexItem>
@@ -1092,7 +1103,7 @@ export class Main extends React.Component<MainProps, MainState> {
                       updateSQLQueries={this.updateSQLQueries}
                       refreshTree={this.state.refreshTree}
                       selectedDataSourceId={this.state.selectedDataConnectionId}
-                      dataSourceEnabled={this.props.dsqtsqSourceEnabled}
+                      dataSourceEnabled={this.props.dataSourceEnabled}
                     />
                     <EuiSpacer />
                   </EuiFlexItem>
